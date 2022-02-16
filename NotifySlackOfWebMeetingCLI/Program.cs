@@ -4,6 +4,12 @@ using System.Diagnostics;
 using System.Text;
 using CommandLine;
 using System.Text.RegularExpressions;
+using System.IO;
+using System.Net.Http;
+using Newtonsoft.Json;
+using NotifySlackOfWebMeetingCLI.Settings;
+using NotifySlackOfWebMeetingCLI.WebMeetings;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 
@@ -11,6 +17,11 @@ namespace NotifySlackOfWebMeetingCLI
 {
     class Program
     {
+        /// <summary>
+        /// HTTPクライアント
+        /// </summary>
+        private static HttpClient s_HttpClient = new HttpClient();
+
         [Verb("setting", HelpText = "Register Slack channel information and create a configuration file.")]
         public class SettingOptions
         {
@@ -82,19 +93,48 @@ namespace NotifySlackOfWebMeetingCLI
 
                 #region 引数のパスに存在するsetting.jsonに設定されているSlackチャンネル情報のIDと抽出した予定を使い、Web会議情報を作成
 
-                
+                // jsonファイルから設定を取り出す
+                var fileContent = string.Empty;
+                using (var sr = new StreamReader(opts.Filepath, Encoding.GetEncoding("utf-8")))
+                {
+                    fileContent = sr.ReadToEnd();
+                }
+
+                dynamic setting = JsonConvert.DeserializeObject(fileContent);
+
+                // 追加する会議情報の一覧を作成
+                var addWebMettings = new List<WebMeeting>();
+                foreach (var webMeetingAppintment in webMeetingAppintments)
+                {
+                    var url = Regex.Match(webMeetingAppintment.Body, zoomUrlRegexp).Value;
+                    var name = webMeetingAppintment.Subject;
+                    var startDateTime = webMeetingAppintment.Start;
+                    var addWebMetting = new WebMeeting()
+                    {
+                        Name = name,
+                        StartDateTime = startDateTime,
+                        Url = url,
+                        RegisteredBy = setting.registeredBy,
+                        SlackChannelId = setting.slackChannelId
+                    };
+                    addWebMettings.Add(addWebMetting);
+                }
 
                 #endregion
 
                 #region 引数のパスに存在するsetting.jsonに設定されているエンドポイントURLを使い、Web会議情報を削除
 
-                
+
 
                 #endregion
 
                 #region 引数のパスに存在するsetting.jsonに設定されているエンドポイントURLを使い、Web会議情報を登録
 
-                
+                // Web会議情報を登録
+                foreach (var addWebMetting in addWebMettings)
+                {
+                    var postData = JsonConvert.SerializeObject(addWebMetting);
+                }
 
                 #endregion
 
