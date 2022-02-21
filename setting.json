@@ -1,0 +1,7 @@
+{
+    "slackChannelId": "xxx",
+    "name": "Test用Slackチャンネル1",
+    "webhookUrl": "https://hooks.slack.com/services/xxx",
+    "registeredBy": "tsuzuki_t",
+    "endpointUrl": "https://xxx"
+}

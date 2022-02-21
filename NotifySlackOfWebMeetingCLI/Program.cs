@@ -75,7 +75,7 @@ namespace NotifySlackOfWebMeetingCLI
 
                 #region 取得した予定一覧の中からWeb会議情報を含む予定を抽出
 
-                var webMeetingAppintments = new List<Outlook.AppointmentItem>();
+                var webMeetingAppointments = new List<Outlook.AppointmentItem>();
 
                 // ZoomURLを特定するための正規表現
                 var zoomUrlRegexp = @"https?://[^(?!.*(/|.|\n).*$)]*\.?zoom\.us/[A-Za-z0-9/?=]+";
@@ -85,7 +85,7 @@ namespace NotifySlackOfWebMeetingCLI
                     // ZoomURLが本文に含まれる予定を正規表現で検索し、リストに詰める
                     if (Regex.IsMatch(nextOperatingDayAppointment.Body, zoomUrlRegexp))
                     {
-                        webMeetingAppintments.Add(nextOperatingDayAppointment);
+                        webMeetingAppointments.Add(nextOperatingDayAppointment);
                     }
                 }
 
@@ -100,11 +100,11 @@ namespace NotifySlackOfWebMeetingCLI
                     fileContent = sr.ReadToEnd();
                 }
 
-                dynamic setting = JsonConvert.DeserializeObject(fileContent);
+                var setting = JsonConvert.DeserializeObject<Setting>(fileContent);
 
                 // 追加する会議情報の一覧を作成
                 var addWebMettings = new List<WebMeeting>();
-                foreach (var webMeetingAppintment in webMeetingAppintments)
+                foreach (var webMeetingAppintment in webMeetingAppointments)
                 {
                     var url = Regex.Match(webMeetingAppintment.Body, zoomUrlRegexp).Value;
                     var name = webMeetingAppintment.Subject;
@@ -114,8 +114,8 @@ namespace NotifySlackOfWebMeetingCLI
                         Name = name,
                         StartDateTime = startDateTime,
                         Url = url,
-                        RegisteredBy = setting.registeredBy,
-                        SlackChannelId = setting.slackChannelId
+                        RegisteredBy = setting.RegisteredBy,
+                        SlackChannelId = setting.SlackChannelId
                     };
                     addWebMettings.Add(addWebMetting);
                 }
@@ -130,10 +130,14 @@ namespace NotifySlackOfWebMeetingCLI
 
                 #region 引数のパスに存在するsetting.jsonに設定されているエンドポイントURLを使い、Web会議情報を登録
 
+                var postUrl = $"{((string)setting.EndpointUrl)}{"WebMeetings"}";
+
                 // Web会議情報を登録
                 foreach (var addWebMetting in addWebMettings)
                 {
                     var postData = JsonConvert.SerializeObject(addWebMetting);
+                    var content = new StringContent(postData, Encoding.UTF8, "application/json");
+                    var response = s_HttpClient.PostAsync(postUrl, content).ConfigureAwait(true);
                 }
 
                 #endregion
