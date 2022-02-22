@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Web;
 using Newtonsoft.Json;
 using NotifySlackOfWebMeetingCLI.Settings;
+using NotifySlackOfWebMeetingCLI.SlackChannels;
 using NotifySlackOfWebMeetingCLI.WebMeetings;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using Outlook = Microsoft.Office.Interop.Outlook;
@@ -37,6 +38,9 @@ namespace NotifySlackOfWebMeetingCLI
 
             [Option('r', "register", HelpText = "The registered name.", Required = true)]
             public string RegisteredBy { get; set; }
+
+            [Option('f', "filepath", HelpText = "Ourput setting file path.", Default = "./setting.json")]
+            public string Filepath { get; set; }
         }
         [Verb("register", HelpText = "Register the web conference information to be notified.")]
         public class RegisterOptions
@@ -50,6 +54,39 @@ namespace NotifySlackOfWebMeetingCLI
             Func<SettingOptions, int> RunSettingAndReturnExitCode = opts =>
             {
                 Console.WriteLine("Run Setting");
+
+                // 引数の値でSlackチャンネル情報を登録
+                var addSlackChannel = new SlackChannel()
+                {
+                    Name = opts.Name,
+                    WebhookUrl = opts.WebhookUrl,
+                    RegisteredBy = opts.RegisteredBy
+                };
+                var endPointUrl = $"{opts.EndpointUrl}{"SlackChannels"}";
+                var postData = JsonConvert.SerializeObject(addSlackChannel);
+                var postContent = new StringContent(postData, Encoding.UTF8, "application/json");
+                var response = s_HttpClient.PostAsync(endPointUrl, postContent).Result;
+
+                // 登録したSlackチャンネル情報のIDと引数のWeb会議情報通知サービスのエンドポイントURLをsetting.jsonに保存
+                var setting = new Setting()
+                {
+                    SlackChannelId = addSlackChannel.Id,
+                    Name = addSlackChannel.Name,
+                    RegisteredBy = addSlackChannel.RegisteredBy,
+                    EndpointUrl = opts.EndpointUrl
+                };
+
+                // jsonに設定を出力
+                var settingJsonString = JsonConvert.SerializeObject(setting);
+                if (File.Exists(opts.Filepath))
+                {
+                    File.Delete(opts.Filepath);
+                }
+
+                using (var fs = File.CreateText(opts.Filepath))
+                {
+                    fs.WriteLine(settingJsonString);
+                }
 
                 return 1;
             };
