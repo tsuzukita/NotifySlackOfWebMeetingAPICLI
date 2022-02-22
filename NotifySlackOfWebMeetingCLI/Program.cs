@@ -6,6 +6,7 @@ using CommandLine;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Net.Http;
+using System.Web;
 using Newtonsoft.Json;
 using NotifySlackOfWebMeetingCLI.Settings;
 using NotifySlackOfWebMeetingCLI.WebMeetings;
@@ -67,9 +68,9 @@ namespace NotifySlackOfWebMeetingCLI
                             Outlook.OlDefaultFolders.olFolderCalendar)
                         as Outlook.Folder;
 
-                DateTime start = DateTime.Today.AddDays(1);
-                DateTime end = start.AddDays(1);
-                Outlook.Items nextOperatingDayAppointments = GetAppointmentsInRange(calFolder, start, end);
+                DateTime startDate = DateTime.Today.AddDays(1);
+                DateTime endDate = startDate.AddDays(1);
+                Outlook.Items nextOperatingDayAppointments = GetAppointmentsInRange(calFolder, startDate, endDate);
 
                 #endregion
 
@@ -124,20 +125,29 @@ namespace NotifySlackOfWebMeetingCLI
 
                 #region 引数のパスに存在するsetting.jsonに設定されているエンドポイントURLを使い、Web会議情報を削除
 
+                var endPointUrl = $"{setting.EndpointUrl}{"WebMeetings"}";
+                var getEndPointUrl = $"{endPointUrl}?fromDate={startDate}&toDate={endDate}";
+                var getWebMeetingsResult = s_HttpClient.GetAsync(getEndPointUrl).Result;
+                var getWebMeetingsString = getWebMeetingsResult.Content.ReadAsStringAsync().Result;
+                // Getしたコンテンツはメッセージ+Jsonコンテンツなので、Jsonコンテンツだけ無理やり取り出す
+                var getWebMeetings = JsonConvert.DeserializeObject<List<WebMeeting>>(getWebMeetingsString.Substring(52));
 
+                foreach (var getWebMeeting in getWebMeetings)
+                {
+                    var deleteEndPointUrl = $"{endPointUrl}/{getWebMeeting.Id}";
+                    s_HttpClient.DeleteAsync(deleteEndPointUrl).Wait();
+                }
 
                 #endregion
 
                 #region 引数のパスに存在するsetting.jsonに設定されているエンドポイントURLを使い、Web会議情報を登録
 
-                var postUrl = $"{((string)setting.EndpointUrl)}{"WebMeetings"}";
-
                 // Web会議情報を登録
                 foreach (var addWebMetting in addWebMettings)
                 {
                     var postData = JsonConvert.SerializeObject(addWebMetting);
-                    var content = new StringContent(postData, Encoding.UTF8, "application/json");
-                    var response = s_HttpClient.PostAsync(postUrl, content).ConfigureAwait(true);
+                    var postContent = new StringContent(postData, Encoding.UTF8, "application/json");
+                    var response = s_HttpClient.PostAsync(endPointUrl, postContent).Result;
                 }
 
                 #endregion
