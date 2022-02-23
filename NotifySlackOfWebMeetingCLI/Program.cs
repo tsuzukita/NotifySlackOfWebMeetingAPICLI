@@ -55,7 +55,7 @@ namespace NotifySlackOfWebMeetingCLI
             {
                 Console.WriteLine("Run Setting");
 
-                // 引数の値でSlackチャンネル情報を登録
+                #region 引数の値でSlackチャンネル情報を登録
                 var addSlackChannel = new SlackChannel()
                 {
                     Name = opts.Name,
@@ -67,7 +67,10 @@ namespace NotifySlackOfWebMeetingCLI
                 var postContent = new StringContent(postData, Encoding.UTF8, "application/json");
                 var response = s_HttpClient.PostAsync(endPointUrl, postContent).Result;
 
-                // 登録したSlackチャンネル情報のIDと引数のWeb会議情報通知サービスのエンドポイントURLをsetting.jsonに保存
+                #endregion
+
+                #region 登録したSlackチャンネル情報のIDと引数のWeb会議情報通知サービスのエンドポイントURLをsetting.jsonに保存
+
                 var setting = new Setting()
                 {
                     SlackChannelId = addSlackChannel.Id,
@@ -87,6 +90,8 @@ namespace NotifySlackOfWebMeetingCLI
                 {
                     fs.WriteLine(settingJsonString);
                 }
+
+                #endregion
 
                 return 1;
             };
