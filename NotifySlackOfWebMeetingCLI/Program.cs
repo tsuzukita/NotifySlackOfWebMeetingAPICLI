@@ -128,6 +128,9 @@ namespace NotifySlackOfWebMeetingCLI
 
                 foreach (Outlook.AppointmentItem nextOperatingDayAppointment in nextOperatingDayAppointments)
                 {
+                    // 予定が空の場合は何もしない
+                    if (string.IsNullOrEmpty(nextOperatingDayAppointment.Body)) continue;
+
                     // ZoomURLが本文に含まれる予定を正規表現で検索し、リストに詰める
                     if (Regex.IsMatch(nextOperatingDayAppointment.Body, zoomUrlRegexp))
                     {
