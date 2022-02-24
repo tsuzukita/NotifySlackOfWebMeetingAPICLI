@@ -66,6 +66,9 @@ namespace NotifySlackOfWebMeetingCLI
                 var postData = JsonConvert.SerializeObject(addSlackChannel);
                 var postContent = new StringContent(postData, Encoding.UTF8, "application/json");
                 var response = s_HttpClient.PostAsync(endPointUrl, postContent).Result;
+                var addSlackChannelResponceContent = response.Content.ReadAsStringAsync().Result;
+                // Post後に取得できるコンテンツはメッセージ+Jsonコンテンツなので、Jsonコンテンツだけ無理やり取り出す
+                var addedSlackChannel = JsonConvert.DeserializeObject<SlackChannel>(addSlackChannelResponceContent.Substring(52));
 
                 #endregion
 
@@ -73,9 +76,9 @@ namespace NotifySlackOfWebMeetingCLI
 
                 var setting = new Setting()
                 {
-                    SlackChannelId = addSlackChannel.Id,
-                    Name = addSlackChannel.Name,
-                    RegisteredBy = addSlackChannel.RegisteredBy,
+                    SlackChannelId = addedSlackChannel.Id,
+                    Name = addedSlackChannel.Name,
+                    RegisteredBy = addedSlackChannel.RegisteredBy,
                     EndpointUrl = opts.EndpointUrl
                 };
 
