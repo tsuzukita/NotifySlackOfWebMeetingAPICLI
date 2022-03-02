@@ -157,7 +157,7 @@ namespace NotifySlackOfWebMeetingCLI
                 {
                     var url = Regex.Match(webMeetingAppintment.Body, zoomUrlRegexp).Value;
                     var name = webMeetingAppintment.Subject;
-                    var startDateTime = webMeetingAppintment.Start;
+                    var startDateTime = new DateTime(webMeetingAppintment.Start.Ticks, DateTimeKind.Local);
                     var addWebMetting = new WebMeeting()
                     {
                         Name = name,
