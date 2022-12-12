@@ -5,9 +5,14 @@ using System.Text;
 using CommandLine;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Web;
+using Microsoft.Identity.Client;
+using Microsoft.Identity.Web;
 using Newtonsoft.Json;
+using NotifySlackOfWebMeetingCLI.Authentication;
 using NotifySlackOfWebMeetingCLI.Settings;
 using NotifySlackOfWebMeetingCLI.SlackChannels;
 using NotifySlackOfWebMeetingCLI.WebMeetings;
@@ -168,6 +173,34 @@ namespace NotifySlackOfWebMeetingCLI
                     };
                     addWebMettings.Add(addWebMetting);
                 }
+
+                #endregion
+
+                #region Functionの認証のためのトークン取得
+
+                AuthenticationConfig config = AuthenticationConfig.ReadFromJsonFile("appsettings.json");
+
+                IConfidentialClientApplication app;
+                app = ConfidentialClientApplicationBuilder.Create(config.ClientId)
+                    .WithClientSecret(config.ClientSecret)
+                    .WithAuthority(new Uri(config.Authority))
+                    .Build();
+
+                app.AddInMemoryTokenCache();
+
+                string[] scopes = new string[] { "api://f6ee7dae-ae4f-4e8a-a07a-3272c09ad2d3/.default" };
+
+                AuthenticationResult result = null;
+                result = app.AcquireTokenForClient(scopes)
+                    .ExecuteAsync().Result;
+
+                var accessToken = result.AccessToken;
+                var defaultRequestHeaders = s_HttpClient.DefaultRequestHeaders;
+                if (defaultRequestHeaders.Accept == null || !defaultRequestHeaders.Accept.Any(m => m.MediaType == "application/json"))
+                {
+                    s_HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                }
+                defaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 #endregion
 
