@@ -46,6 +46,21 @@ namespace NotifySlackOfWebMeetingCLI
 
             [Option('f', "filepath", HelpText = "Ourput setting file path.", Default = "./setting.json")]
             public string Filepath { get; set; }
+
+            [Option('i', "instance", HelpText = "Instance", Required = false)]
+            public string Instance { get; set; }
+
+            [Option('t', "tenant", HelpText = "Tenant", Required = true)]
+            public string Tenant { get; set; }
+
+            [Option('c', "clientId", HelpText = "Tenant", Required = true)]
+            public string ClientId { get; set; }
+
+            [Option('s', "clientSecret", HelpText = "ClientSecret", Required = true)]
+            public string ClientSecret { get; set; }
+
+            [Option('a', "apiUrl", HelpText = "ApiUrl", Required = true)]
+            public string ApiUrl { get; set; }
         }
         [Verb("register", HelpText = "Register the web conference information to be notified.")]
         public class RegisterOptions
@@ -178,17 +193,15 @@ namespace NotifySlackOfWebMeetingCLI
 
                 #region Functionの認証のためのトークン取得
 
-                AuthenticationConfig config = AuthenticationConfig.ReadFromJsonFile("appsettings.json");
-
                 IConfidentialClientApplication app;
-                app = ConfidentialClientApplicationBuilder.Create(config.ClientId)
-                    .WithClientSecret(config.ClientSecret)
-                    .WithAuthority(new Uri(config.Authority))
+                app = ConfidentialClientApplicationBuilder.Create(setting.ClientId)
+                    .WithClientSecret(setting.ClientSecret)
+                    .WithAuthority(new Uri(setting.Authority))
                     .Build();
 
                 app.AddInMemoryTokenCache();
 
-                string[] scopes = new string[] { "api://f6ee7dae-ae4f-4e8a-a07a-3272c09ad2d3/.default" };
+                string[] scopes = new string[] { $"{setting.ApiUrl}.default" };
 
                 AuthenticationResult result = null;
                 result = app.AcquireTokenForClient(scopes)
@@ -196,10 +209,6 @@ namespace NotifySlackOfWebMeetingCLI
 
                 var accessToken = result.AccessToken;
                 var defaultRequestHeaders = s_HttpClient.DefaultRequestHeaders;
-                if (defaultRequestHeaders.Accept == null || !defaultRequestHeaders.Accept.Any(m => m.MediaType == "application/json"))
-                {
-                    s_HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                }
                 defaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 #endregion
@@ -209,7 +218,8 @@ namespace NotifySlackOfWebMeetingCLI
                 var endPointUrl = $"{setting.EndpointUrl}{"WebMeetings"}";
                 var getEndPointUrl = $"{endPointUrl}?fromDate={startDate}&toDate={endDate}";
                 var getWebMeetingsResult = s_HttpClient.GetAsync(getEndPointUrl).Result;
-                var getWebMeetingsString = getWebMeetingsResult.Content.ReadAsStringAsync().Result;
+                var getWebMeetingsContent = getWebMeetingsResult.Content;
+                var getWebMeetingsString = getWebMeetingsContent.ReadAsStringAsync().Result;
                 // Getしたコンテンツはメッセージ+Jsonコンテンツなので、Jsonコンテンツだけ無理やり取り出す
                 var getWebMeetings = JsonConvert.DeserializeObject<List<WebMeeting>>(getWebMeetingsString);
 
